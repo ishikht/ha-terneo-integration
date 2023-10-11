@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Terneo Climate Control",
+        "description": "Please enter your email and password:",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password."
+    },
+    "abort": {
+      "already_configured": "An entry with this email already exists."
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+    "domain": "terneo",
+    "name": "Terneo Climate Control",
+    "config_flow": true,
+    "codeowners": [],
+    "dependencies": [],
+    "iot_class": "cloud_polling",
+    "requirements": [],
+    "version": "0.1.0"
+}
