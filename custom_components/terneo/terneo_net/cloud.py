@@ -14,6 +14,9 @@ class CloudDevice:
     id: int
     serial_number: str
     name: str
+    type: str
+    firmware_version: str
+    model: str
 
 
 class CloudService:
@@ -91,8 +94,22 @@ class CloudService:
 
         if not devices_data:
             return None
-        return [CloudDevice(id=device['id'], serial_number=device['sn'], name=device['name']) for device in
-                devices_data.get("results", [])]
+        return [CloudDevice(
+            id=device['id'],
+            serial_number=device['sn'],
+            name=device['name'],
+            type=device['type'],
+            firmware_version=device.get('version_name', 'Unknown'),
+            model=self._extract_model_from_image(device.get('image', ''))
+        ) for device in devices_data.get("results", [])]
+
+    @staticmethod
+    def _extract_model_from_image(image: str) -> str:
+        if not image:
+            return 'Unknown'
+        # Extract the portion after the last slash and before the hyphen.
+        model = image.split('/')[-1].split('-')[0].upper()
+        return model or 'Unknown'
 
     async def _get_device(self, device_id: int) -> Optional[CloudDevice]:
         device_data = await self._send_request('GET', f'/device/{device_id}/')

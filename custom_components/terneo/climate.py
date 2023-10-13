@@ -69,6 +69,10 @@ class TerneoClimateEntity(ClimateEntity):
             )
 
     @property
+    def unique_id(self) -> str:
+        return f"{DOMAIN}_{self._cloud_device.serial_number}"
+
+    @property
     def name(self):
         """Return the name of this Thermostat."""
         return self._name
@@ -104,6 +108,16 @@ class TerneoClimateEntity(ClimateEntity):
     def temperature_unit(self):
         """Return the unit of measurement used by the platform."""
         return UnitOfTemperature.CELSIUS
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._cloud_device.serial_number)},
+            "name": self._cloud_device.name,
+            "manufacturer": "Terneo",
+            "model": self._cloud_device.model,
+            "sw_version": self._cloud_device.firmware_version
+        }
 
     async def async_update(self):
         """Fetch new state data for this device."""
