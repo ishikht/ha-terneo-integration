@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+from typing import Optional
+
 from .terneo_net.cloud import CloudDevice, CloudService
 
 from homeassistant.components.climate import ClimateEntity
@@ -15,6 +17,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_EMAIL,
+    ATTR_TEMPERATURE,
     UnitOfTemperature,
 )
 
@@ -46,10 +49,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class TerneoClimateEntity(ClimateEntity):
     def __init__(self, cloud_device: CloudDevice, cloud_service: CloudService) -> None:
         super().__init__()
+        self._target_temperature = None
         self._cloud_device = cloud_device
         self._cloud_service = cloud_service
 
-        self._hvac_mode = CURRENT_HVAC_OFF
+        self._hvac_mode = HVAC_MODE_OFF
         self._name = cloud_device.name
 
     async def async_added_to_hass(self):
@@ -65,7 +69,7 @@ class TerneoClimateEntity(ClimateEntity):
             self._current_temperature = telemetry.current_temperature
             self._target_temperature = telemetry.target_temperature
             self._hvac_mode = (
-                CURRENT_HVAC_HEAT if telemetry.heating else CURRENT_HVAC_OFF
+                HVAC_MODE_HEAT if telemetry.heating else HVAC_MODE_OFF
             )
 
     @property
@@ -108,6 +112,50 @@ class TerneoClimateEntity(ClimateEntity):
     def temperature_unit(self):
         """Return the unit of measurement used by the platform."""
         return UnitOfTemperature.CELSIUS
+
+    @property
+    def target_temperature_step(self) -> Optional[float]:
+        """Return the supported step of target temperature."""
+        return 1.0
+
+    @property
+    def max_temp(self) -> Optional[int]:
+        """Return the maximum temperature."""
+        return 45
+
+    @property
+    def min_temp(self) -> Optional[int]:
+        """Return the minimum temperature."""
+        return 5
+
+    async def async_set_temperature(self, **kwargs):
+        """Set new target temperature."""
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        if temperature is None:
+            return
+
+        try:
+            success = await self._cloud_service.set_temperature(self._cloud_device.serial_number, temperature)
+            if success:
+                self._target_temperature = temperature
+                await self.async_update_ha_state()
+            else:
+                _LOGGER.error(f"Failed to update temperature to {temperature} for device {self.name}")
+        except Exception as e:
+            _LOGGER.error(f"Error setting temperature to {temperature} for device {self.name}: {e}")
+
+    async def async_set_hvac_mode(self, hvac_mode):
+        """Set new target hvac mode."""
+        try:
+            is_off = hvac_mode == HVAC_MODE_OFF
+            success = await self._cloud_service.power_on_off(self._cloud_device.serial_number, is_off)
+            if success:
+                self._hvac_mode = HVAC_MODE_OFF if is_off else HVAC_MODE_HEAT
+                await self.async_update_ha_state()
+            else:
+                _LOGGER.error(f"Failed to update HVAC mode to {hvac_mode} for device {self.name}")
+        except Exception as e:
+            _LOGGER.error(f"Error setting HVAC mode to {hvac_mode} for device {self.name}: {e}")
 
     @property
     def device_info(self):
