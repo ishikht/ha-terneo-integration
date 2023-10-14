@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
+from datetime import datetime, timedelta
 
 from .terneo_net.cloud import CloudDevice, CloudService
 
@@ -28,6 +29,8 @@ _LOGGER = logging.getLogger(__name__)
 SUPPORT_FLAGS = SUPPORT_TARGET_TEMPERATURE
 SUPPORT_HVAC = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
 
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     email = hass.data[DOMAIN][CONF_EMAIL]
@@ -49,6 +52,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class TerneoClimateEntity(ClimateEntity):
     def __init__(self, cloud_device: CloudDevice, cloud_service: CloudService) -> None:
         super().__init__()
+        self._last_command_time = datetime.min
+
         self._target_temperature = None
         self._cloud_device = cloud_device
         self._cloud_service = cloud_service
@@ -137,8 +142,9 @@ class TerneoClimateEntity(ClimateEntity):
         try:
             success = await self._cloud_service.set_temperature(self._cloud_device.serial_number, temperature)
             if success:
+                self._last_command_time = datetime.now()
                 self._target_temperature = temperature
-                await self.async_update_ha_state()
+                self.async_write_ha_state()
             else:
                 _LOGGER.error(f"Failed to update temperature to {temperature} for device {self.name}")
         except Exception as e:
@@ -150,8 +156,9 @@ class TerneoClimateEntity(ClimateEntity):
             is_off = hvac_mode == HVAC_MODE_OFF
             success = await self._cloud_service.power_on_off(self._cloud_device.serial_number, is_off)
             if success:
+                self._last_command_time = datetime.now()
                 self._hvac_mode = HVAC_MODE_OFF if is_off else HVAC_MODE_HEAT
-                await self.async_update_ha_state()
+                self.async_write_ha_state()
             else:
                 _LOGGER.error(f"Failed to update HVAC mode to {hvac_mode} for device {self.name}")
         except Exception as e:
@@ -169,4 +176,5 @@ class TerneoClimateEntity(ClimateEntity):
 
     async def async_update(self):
         """Fetch new state data for this device."""
-        await self._async_update_telemetry()
+        if datetime.now() - self._last_command_time > MIN_TIME_BETWEEN_UPDATES:
+            await self._async_update_telemetry()
