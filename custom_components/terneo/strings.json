@@ -1,19 +1,21 @@
 {
-  "title": "Terneo Climate Control",
-  "step": {
-    "user": {
-      "title": "Log in to your Terneo account",
-      "description": "Please enter your email and password:",
-      "data": {
-        "email": "Email",
-        "password": "Password"
+  "config": {
+    "title": "Terneo Climate Control",
+    "step": {
+      "user": {
+        "title": "Log in to your Terneo account",
+        "description": "Please enter your email and password:",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password"
+    },
+    "abort": {
+      "already_configured_account": "Account is already configured"
     }
-  },
-  "error": {
-    "invalid_auth": ["Invalid email or password"]
-  },
-  "abort": {
-    "already_configured_account": "Account is already configure"
   }
 }
