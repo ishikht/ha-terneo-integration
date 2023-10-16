@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: refs/heads/main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
           fetch-depth: 0  # Ensures all tags and branches are fetched
 
       - name: Update version in manifest
@@ -28,7 +28,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git add custom_components/terneo/manifest.json
           git commit -m "Update version in manifest to ${{ github.ref_name }}"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/ishikht/ha-terneo-integration.git
+          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_TOKEN }}@github.com/ishikht/ha-terneo-integration.git
           git push origin main
 
       - name: Create Release
