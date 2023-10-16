@@ -30,6 +30,9 @@ _LOGGER = logging.getLogger(__name__)
 SUPPORT_FLAGS = SUPPORT_TARGET_TEMPERATURE
 SUPPORT_HVAC = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
 
+MIN_TEMPERATURE = 5
+MAX_TEMPERATURE = 45
+
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=2)
 
 
@@ -69,8 +72,8 @@ class TerneoClimateEntity(ClimateEntity):
         self._attr_hvac_modes = SUPPORT_HVAC
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_target_temperature_step = 1.0
-        self._attr_max_temp = 45
-        self._attr_min_temp = 5
+        self._attr_max_temp = MAX_TEMPERATURE
+        self._attr_min_temp = MIN_TEMPERATURE
 
     @property
     def unique_id(self) -> str:
@@ -116,7 +119,10 @@ class TerneoClimateEntity(ClimateEntity):
             self._cloud_device.serial_number
         )
         if telemetry:
-            self._current_temperature = telemetry.current_temperature
+            if telemetry.current_temperature < MIN_TEMPERATURE:
+                self._current_temperature = None
+            else:
+                self._current_temperature = telemetry.current_temperature
             self._target_temperature = telemetry.target_temperature
             self._hvac_mode = (HVAC_MODE_OFF if telemetry.power_off else HVAC_MODE_HEAT)
             if telemetry.power_off:
