@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+import voluptuous as vol
 from datetime import datetime, timedelta
 
 from .terneo_net.cloud import CloudDevice, CloudService
@@ -26,6 +26,8 @@ from homeassistant.const import (
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = vol.Schema({}, extra=vol.ALLOW_EXTRA)
 
 SUPPORT_FLAGS = SUPPORT_TARGET_TEMPERATURE
 SUPPORT_HVAC = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
