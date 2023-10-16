@@ -32,7 +32,7 @@ class TerneoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 for entry in self._async_current_entries():
                     if entry.unique_id == user_input[CONF_EMAIL]:
-                        return self.async_abort(reason="already_configured")
+                        return self.async_abort(reason="already_configured_account")
 
                 return self.async_create_entry(
                     title=user_input[CONF_EMAIL], data=user_input

@@ -14,7 +14,7 @@
       "invalid_auth": "Invalid email or password."
     },
     "abort": {
-      "already_configured": "An entry with this email already exists."
+      "already_configured_account": "An entry with this email already exists."
     }
   }
 }
