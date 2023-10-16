@@ -14,13 +14,14 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
         with:
+          ref: refs/heads/main
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # Important: this ensures all tags and branches are fetched
-      
+          fetch-depth: 0  # Ensures all tags and branches are fetched
+
       - name: Update version in manifest
         run: |
           sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.ref_name }}\"/" custom_components/terneo/manifest.json
-      
+
       - name: Commit and push manifest changes
         run: |
           git config --local user.email "action@github.com"
@@ -28,7 +29,7 @@ jobs:
           git add custom_components/terneo/manifest.json
           git commit -m "Update version in manifest to ${{ github.ref_name }}"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/ishikht/ha-terneo-integration.git
-          git push
+          git push origin main
 
       - name: Create Release
         uses: actions/create-release@v1
