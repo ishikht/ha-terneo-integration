@@ -9,6 +9,7 @@ from .terneo_net.cloud import CloudDevice, CloudService
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
+    CURRENT_HVAC_IDLE,
     CURRENT_HVAC_OFF,
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
@@ -55,36 +56,25 @@ class TerneoClimateEntity(ClimateEntity):
         self._last_command_time = datetime.min
 
         self._target_temperature = None
+        self._current_temperature = None
+
         self._cloud_device = cloud_device
         self._cloud_service = cloud_service
 
         self._hvac_mode = HVAC_MODE_OFF
-        self._name = cloud_device.name
+        self._hvac_action = CURRENT_HVAC_OFF
 
-    async def async_added_to_hass(self):
-        """When entity is added to hass."""
-        await self._async_update_telemetry()
-
-    async def _async_update_telemetry(self):
-        """Update the state from the provided telemetry data."""
-        telemetry = await self._cloud_service.get_telemetry(
-            self._cloud_device.serial_number
-        )
-        if telemetry:
-            self._current_temperature = telemetry.current_temperature
-            self._target_temperature = telemetry.target_temperature
-            self._hvac_mode = (
-                HVAC_MODE_HEAT if telemetry.heating else HVAC_MODE_OFF
-            )
+        self._attr_name = cloud_device.name
+        self._attr_supported_features = SUPPORT_FLAGS
+        self._attr_hvac_modes = SUPPORT_HVAC
+        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
+        self._attr_target_temperature_step = 1.0
+        self._attr_max_temp = 45
+        self._attr_min_temp = 5
 
     @property
     def unique_id(self) -> str:
         return f"{DOMAIN}_{self._cloud_device.serial_number}"
-
-    @property
-    def name(self):
-        """Return the name of this Thermostat."""
-        return self._name
 
     @property
     def current_temperature(self):
@@ -102,36 +92,39 @@ class TerneoClimateEntity(ClimateEntity):
         return self._hvac_mode
 
     @property
-    def supported_features(self):
-        """Return the list of supported features."""
-        return SUPPORT_FLAGS
+    def hvac_action(self):
+        """Return current hvac action."""
+        return self._hvac_action
 
     @property
-    def hvac_modes(self):
-        """Return the list of available hvac operation modes.
-        Need to be a subset of HVAC_MODES.
-        """
-        return SUPPORT_HVAC
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._cloud_device.serial_number)},
+            "name": self._cloud_device.name,
+            "manufacturer": "Terneo",
+            "model": self._cloud_device.model,
+            "sw_version": self._cloud_device.firmware_version
+        }
 
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement used by the platform."""
-        return UnitOfTemperature.CELSIUS
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        await self._async_update_telemetry()
 
-    @property
-    def target_temperature_step(self) -> Optional[float]:
-        """Return the supported step of target temperature."""
-        return 1.0
-
-    @property
-    def max_temp(self) -> Optional[int]:
-        """Return the maximum temperature."""
-        return 45
-
-    @property
-    def min_temp(self) -> Optional[int]:
-        """Return the minimum temperature."""
-        return 5
+    async def _async_update_telemetry(self):
+        """Update the state from the provided telemetry data."""
+        telemetry = await self._cloud_service.get_telemetry(
+            self._cloud_device.serial_number
+        )
+        if telemetry:
+            self._current_temperature = telemetry.current_temperature
+            self._target_temperature = telemetry.target_temperature
+            self._hvac_mode = (HVAC_MODE_OFF if telemetry.power_off else HVAC_MODE_HEAT)
+            if telemetry.power_off:
+                self._hvac_action = CURRENT_HVAC_OFF
+            else:
+                self._hvac_action = (
+                    CURRENT_HVAC_HEAT if telemetry.heating else CURRENT_HVAC_IDLE
+                )
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -158,21 +151,12 @@ class TerneoClimateEntity(ClimateEntity):
             if success:
                 self._last_command_time = datetime.now()
                 self._hvac_mode = HVAC_MODE_OFF if is_off else HVAC_MODE_HEAT
+                self._hvac_action = CURRENT_HVAC_OFF if is_off else CURRENT_HVAC_IDLE
                 self.async_write_ha_state()
             else:
                 _LOGGER.error(f"Failed to update HVAC mode to {hvac_mode} for device {self.name}")
         except Exception as e:
             _LOGGER.error(f"Error setting HVAC mode to {hvac_mode} for device {self.name}: {e}")
-
-    @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self._cloud_device.serial_number)},
-            "name": self._cloud_device.name,
-            "manufacturer": "Terneo",
-            "model": self._cloud_device.model,
-            "sw_version": self._cloud_device.firmware_version
-        }
 
     async def async_update(self):
         """Fetch new state data for this device."""
