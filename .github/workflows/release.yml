@@ -41,12 +41,13 @@ jobs:
 
       - name: Create and Upload Release using GH CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_TOKEN }}  # Making sure we use the PERSONAL_TOKEN
+          PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}  # Using PERSONAL_TOKEN instead of GITHUB_TOKEN
         run: |
-          gh auth login --with-token <<< "$GITHUB_TOKEN"
+          echo "$PERSONAL_TOKEN" | gh auth login --with-token
           gh release create ${{ github.ref }} \
             ./ha-terneo-integration.zip \
             --title "Release ${{ github.ref }}" \
             --notes "Release notes for ${{ github.ref }}" \
             --repo ${{ github.repository }}
+
 
