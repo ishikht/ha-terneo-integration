@@ -5,6 +5,5 @@
   "issue_tracker": "https://github.com/ishikht/ha-terneo-integration/issues",
   "codeowners": ["@ishikht"],
   "zip_release": true,
-  "hide_default_branch": true,
-  "category": "integration"
+  "hide_default_branch": true
 }
