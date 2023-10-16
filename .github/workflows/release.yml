@@ -45,9 +45,10 @@ jobs:
 
       - name: Generate Changelog
         run: |
-          export GITHUB_TOKEN=${{ secrets.PERSONAL_TOKEN }}
-          github_changelog_generator -u ${{ github.repository_owner }} -p ${{ github.event.repository.name }} --future-release ${{ steps.get_version.outputs.version }}
-          echo "CHANGELOG_CONTENT=$(cat CHANGELOG.md)" >> $GITHUB_ENV
+          github_changelog_generator -u ishikht -p ha-terneo-integration --token ${{ secrets.PERSONAL_TOKEN }}
+          echo 'CHANGELOG<<EOF' >> $GITHUB_ENV
+          cat CHANGELOG.md >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
 
       - name: Create Release with Changelog
         uses: actions/create-release@v1
