@@ -18,16 +18,20 @@ jobs:
           token: ${{ secrets.PERSONAL_TOKEN }}
           fetch-depth: 0  # Ensures all tags and branches are fetched
 
+      - name: Extract version from tag
+        id: get_version
+        run: echo "::set-output name=version::${GITHUB_REF#refs/tags/v}"
+
       - name: Update version in manifest
         run: |
-          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.ref_name#v }}\"/" custom_components/terneo/manifest.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"${{ steps.get_version.outputs.version }}\"/" custom_components/terneo/manifest.json
 
       - name: Commit and push manifest changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add custom_components/terneo/manifest.json
-          git commit -m "Update version in manifest to ${{ github.ref_name }}"
+          git commit -m "Update version in manifest to ${{ steps.get_version.outputs.version }}"
           git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_TOKEN }}@github.com/ishikht/ha-terneo-integration.git
           git push origin main
 
@@ -42,7 +46,7 @@ jobs:
       - name: Generate Changelog
         run: |
           export GITHUB_TOKEN=${{ secrets.PERSONAL_TOKEN }}
-          github_changelog_generator -u ${{ github.repository_owner }} -p ${{ github.event.repository.name }} --future-release ${{ github.ref_name#v }}
+          github_changelog_generator -u ${{ github.repository_owner }} -p ${{ github.event.repository.name }} --future-release ${{ steps.get_version.outputs.version }}
           echo "CHANGELOG_CONTENT=$(cat CHANGELOG.md)" >> $GITHUB_ENV
 
       - name: Create Release with Changelog
