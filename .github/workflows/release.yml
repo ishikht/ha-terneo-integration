@@ -35,27 +35,18 @@ jobs:
           git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_TOKEN }}@github.com/ishikht/ha-terneo-integration.git
           git push origin main
 
-      - name: Create Release 
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
       - name: Create ZIP
         run: |
           cd custom_components/terneo && zip -r ../../ha-terneo-integration.zip .
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+      - name: Create and Upload Release using GH CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} 
-          asset_path: ./ha-terneo-integration.zip
-          asset_name: ha-terneo-integration.zip
-          asset_content_type: application/zip
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_TOKEN }}  # Making sure we use the PERSONAL_TOKEN
+        run: |
+          gh auth login --with-token <<< "$GITHUB_TOKEN"
+          gh release create ${{ github.ref }} \
+            ./ha-terneo-integration.zip \
+            --title "Release ${{ github.ref }}" \
+            --notes "Release notes for ${{ github.ref }}" \
+            --repo ${{ github.repository }}
 
