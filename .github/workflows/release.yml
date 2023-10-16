@@ -20,7 +20,7 @@ jobs:
 
       - name: Update version in manifest
         run: |
-          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.ref_name }}\"/" custom_components/terneo/manifest.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.ref_name#v }}\"/" custom_components/terneo/manifest.json
 
       - name: Commit and push manifest changes
         run: |
