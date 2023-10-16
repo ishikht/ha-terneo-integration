@@ -1,6 +1,7 @@
 {
   "name": "Terneo Climate Control",
   "zip_release": true,
+  "filename": "ha-terneo-integration.zip",
   "hide_default_branch": true,
   "render_readme": true
 }
