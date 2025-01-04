@@ -20,13 +20,26 @@ class CloudDevice:
 
 
 class CloudService:
-    HEADERS_BASE = {"Authorization": ""}  # We will set this in the login method
+    HEADERS_BASE = {"Authorization": ""}
 
     def __init__(self, email: str, password: str):
         self._email = email
         self._password = password
         self._access_token = None
         self.cloud_devices: List[CloudDevice] = []
+        self._http_client = None
+
+    async def _get_http_client(self):
+        """Lazily initialize the HTTP client."""
+        if not self._http_client:
+            self._http_client = httpx.AsyncClient()
+        return self._http_client
+
+    async def close(self):
+        """Close the HTTP client."""
+        if self._http_client:
+            await self._http_client.aclose()
+            self._http_client = None
 
     async def initialize(self):
         if await self.auth():
@@ -157,9 +170,9 @@ class CloudService:
         self, method: str, endpoint: str, base_url=API_BASE_URL, **kwargs
     ) -> Optional[dict]:
         url = f"{base_url}{endpoint}"
-        async with httpx.AsyncClient() as client:
-            headers = self.HEADERS_BASE.copy()
-            response = await client.request(method, url, headers=headers, **kwargs)
-            if response.status_code != 200:
-                return None
-            return response.json()
+        client = await self._get_http_client()
+        headers = self.HEADERS_BASE.copy()
+        response = await client.request(method, url, headers=headers, **kwargs)
+        if response.status_code != 200:
+            return None
+        return response.json()

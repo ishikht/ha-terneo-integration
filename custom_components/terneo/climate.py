@@ -21,7 +21,11 @@ from .terneo_net.cloud import CloudDevice, CloudService
 
 _LOGGER = logging.getLogger(__name__)
 
-SUPPORT_FLAGS = ClimateEntityFeature.TARGET_TEMPERATURE
+SUPPORT_FLAGS = (
+    ClimateEntityFeature.TARGET_TEMPERATURE
+    | ClimateEntityFeature.TURN_ON
+    | ClimateEntityFeature.TURN_OFF
+)
 SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 MIN_TEMPERATURE = 5
