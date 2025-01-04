@@ -1,33 +1,28 @@
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timedelta
+import logging
 
-from .terneo_net.cloud import CloudDevice, CloudService
-
-from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_IDLE,
-    CURRENT_HVAC_OFF,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
-    SUPPORT_TARGET_TEMPERATURE,
+from homeassistant.components.climate import (
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
 )
-
 from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_EMAIL,
     ATTR_TEMPERATURE,
+    CONF_EMAIL,
+    CONF_PASSWORD,
     UnitOfTemperature,
 )
 
 from . import DOMAIN
+from .terneo_net.cloud import CloudDevice, CloudService
 
 _LOGGER = logging.getLogger(__name__)
 
-SUPPORT_FLAGS = SUPPORT_TARGET_TEMPERATURE
-SUPPORT_HVAC = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
+SUPPORT_FLAGS = ClimateEntityFeature.TARGET_TEMPERATURE
+SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 MIN_TEMPERATURE = 5
 MAX_TEMPERATURE = 45
@@ -63,8 +58,8 @@ class TerneoClimateEntity(ClimateEntity):
         self._cloud_device = cloud_device
         self._cloud_service = cloud_service
 
-        self._hvac_mode = HVAC_MODE_OFF
-        self._hvac_action = CURRENT_HVAC_OFF
+        self._hvac_mode = HVACMode.OFF
+        self._hvac_action = HVACAction.OFF
 
         self._attr_name = cloud_device.name
         self._attr_supported_features = SUPPORT_FLAGS
@@ -105,7 +100,7 @@ class TerneoClimateEntity(ClimateEntity):
             "name": self._cloud_device.name,
             "manufacturer": "Terneo",
             "model": self._cloud_device.model,
-            "sw_version": self._cloud_device.firmware_version
+            "sw_version": self._cloud_device.firmware_version,
         }
 
     async def async_added_to_hass(self):
@@ -123,12 +118,12 @@ class TerneoClimateEntity(ClimateEntity):
             else:
                 self._current_temperature = telemetry.current_temperature
             self._target_temperature = telemetry.target_temperature
-            self._hvac_mode = (HVAC_MODE_OFF if telemetry.power_off else HVAC_MODE_HEAT)
+            self._hvac_mode = HVACMode.OFF if telemetry.power_off else HVACMode.HEAT
             if telemetry.power_off:
-                self._hvac_action = CURRENT_HVAC_OFF
+                self._hvac_action = HVACAction.OFF
             else:
                 self._hvac_action = (
-                    CURRENT_HVAC_HEAT if telemetry.heating else CURRENT_HVAC_IDLE
+                    HVACAction.HEATING if telemetry.heating else HVACAction.IDLE
                 )
 
     async def async_set_temperature(self, **kwargs):
@@ -138,30 +133,42 @@ class TerneoClimateEntity(ClimateEntity):
             return
 
         try:
-            success = await self._cloud_service.set_temperature(self._cloud_device.serial_number, temperature)
+            success = await self._cloud_service.set_temperature(
+                self._cloud_device.serial_number, temperature
+            )
             if success:
                 self._last_command_time = datetime.now()
                 self._target_temperature = temperature
                 self.async_write_ha_state()
             else:
-                _LOGGER.error(f"Failed to update temperature to {temperature} for device {self.name}")
+                _LOGGER.error(
+                    f"Failed to update temperature to {temperature} for device {self.name}"
+                )
         except Exception as e:
-            _LOGGER.error(f"Error setting temperature to {temperature} for device {self.name}: {e}")
+            _LOGGER.error(
+                f"Error setting temperature to {temperature} for device {self.name}: {e}"
+            )
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
         try:
-            is_off = hvac_mode == HVAC_MODE_OFF
-            success = await self._cloud_service.power_on_off(self._cloud_device.serial_number, is_off)
+            is_off = hvac_mode == HVACMode.OFF
+            success = await self._cloud_service.power_on_off(
+                self._cloud_device.serial_number, is_off
+            )
             if success:
                 self._last_command_time = datetime.now()
-                self._hvac_mode = HVAC_MODE_OFF if is_off else HVAC_MODE_HEAT
-                self._hvac_action = CURRENT_HVAC_OFF if is_off else CURRENT_HVAC_IDLE
+                self._hvac_mode = HVACMode.OFF if is_off else HVACMode.HEAT
+                self._hvac_action = HVACAction.OFF if is_off else HVACAction.IDLE
                 self.async_write_ha_state()
             else:
-                _LOGGER.error(f"Failed to update HVAC mode to {hvac_mode} for device {self.name}")
+                _LOGGER.error(
+                    f"Failed to update HVAC mode to {hvac_mode} for device {self.name}"
+                )
         except Exception as e:
-            _LOGGER.error(f"Error setting HVAC mode to {hvac_mode} for device {self.name}: {e}")
+            _LOGGER.error(
+                f"Error setting HVAC mode to {hvac_mode} for device {self.name}: {e}"
+            )
 
     async def async_update(self):
         """Fetch new state data for this device."""

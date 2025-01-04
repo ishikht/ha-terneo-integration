@@ -1,11 +1,12 @@
 import logging
+
 import voluptuous as vol
-from .terneo_net.cloud import CloudService
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 
 from . import DOMAIN
+from .terneo_net.cloud import CloudService
 
 DATA_SCHEMA = vol.Schema(
     {

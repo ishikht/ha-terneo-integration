@@ -1,7 +1,7 @@
 from dataclasses import dataclass
+from typing import List, Optional
 
 import httpx
-from typing import List, Optional
 
 from .models import TerneoTelemetry
 
@@ -33,7 +33,9 @@ class CloudService:
             self.cloud_devices = await self._get_devices() or []
 
     async def auth(self) -> bool:
-        data = await self._send_request('POST', '/login/', json={"email": self._email, "password": self._password})
+        data = await self._send_request(
+            "POST", "/login/", json={"email": self._email, "password": self._password}
+        )
         if not data:
             return False
         self._access_token = data.get("access_token", None)
@@ -41,18 +43,22 @@ class CloudService:
         return self._access_token is not None
 
     def get_name(self, serial_number: str) -> Optional[str]:
-        cloud_device = next((d for d in self.cloud_devices if d.serial_number == serial_number), None)
+        cloud_device = next(
+            (d for d in self.cloud_devices if d.serial_number == serial_number), None
+        )
         if not cloud_device:
             return None
 
         return cloud_device.name
 
     async def get_telemetry(self, serial_number: str) -> Optional[TerneoTelemetry]:
-        cloud_device = next((d for d in self.cloud_devices if d.serial_number == serial_number), None)
+        cloud_device = next(
+            (d for d in self.cloud_devices if d.serial_number == serial_number), None
+        )
         if not cloud_device:
             return None
 
-        data = await self._send_request('GET', f'/device/{cloud_device.id}/')
+        data = await self._send_request("GET", f"/device/{cloud_device.id}/")
         if not data:
             return None
         telemetry_data = data.get("data")
@@ -60,10 +66,12 @@ class CloudService:
             return None
 
         telemetry = TerneoTelemetry(
-            power_off=self._safe_bool_conversion(telemetry_data['device_off']),
-            current_temperature=self._safe_float_conversion(telemetry_data['temp_current']),
-            heating=self._safe_bool_conversion(telemetry_data['setpoint_state']),
-            target_temperature=int(telemetry_data['temp_setpoint'])
+            power_off=self._safe_bool_conversion(telemetry_data["device_off"]),
+            current_temperature=self._safe_float_conversion(
+                telemetry_data["temp_current"]
+            ),
+            heating=self._safe_bool_conversion(telemetry_data["setpoint_state"]),
+            target_temperature=int(telemetry_data["temp_setpoint"]),
         )
         return telemetry
 
@@ -81,52 +89,73 @@ class CloudService:
         return value is True
 
     async def set_temperature(self, serial_number: str, temperature: int) -> bool:
-        cloud_device = next((d for d in self.cloud_devices if d.serial_number == serial_number), None)
+        cloud_device = next(
+            (d for d in self.cloud_devices if d.serial_number == serial_number), None
+        )
         if not cloud_device:
             return False
 
-        response_data = await self._send_request('PUT', f'/device/{cloud_device.id}/setpoint/',
-                                                 json={"value": temperature})
+        response_data = await self._send_request(
+            "PUT", f"/device/{cloud_device.id}/setpoint/", json={"value": temperature}
+        )
         return response_data and response_data.get("value", None) == temperature
 
     async def _get_devices(self) -> Optional[List[CloudDevice]]:
-        devices_data = await self._send_request('GET', '/device/')
+        devices_data = await self._send_request("GET", "/device/")
 
         if not devices_data:
             return None
-        return [CloudDevice(
-            id=device['id'],
-            serial_number=device['sn'],
-            name=device['name'],
-            type=device['type'],
-            firmware_version=device.get('version_name', 'Unknown'),
-            model=self._extract_model_from_image(device.get('image', ''))
-        ) for device in devices_data.get("results", [])]
+        return [
+            CloudDevice(
+                id=device["id"],
+                serial_number=device["sn"],
+                name=device["name"],
+                type=device["type"],
+                firmware_version=device.get("version_name", "Unknown"),
+                model=self._extract_model_from_image(device.get("image", "")),
+            )
+            for device in devices_data.get("results", [])
+        ]
 
     @staticmethod
     def _extract_model_from_image(image: str) -> str:
         if not image:
-            return 'Unknown'
+            return "Unknown"
         # Extract the portion after the last slash and before the hyphen.
-        model = image.split('/')[-1].split('-')[0].upper()
-        return model or 'Unknown'
+        model = image.split("/")[-1].split("-")[0].upper()
+        return model or "Unknown"
 
     async def _get_device(self, device_id: int) -> Optional[CloudDevice]:
-        device_data = await self._send_request('GET', f'/device/{device_id}/')
+        device_data = await self._send_request("GET", f"/device/{device_id}/")
         if not device_data:
             return None
-        return CloudDevice(id=device_data['id'], serial_number=device_data['sn'], name=device_data['name'])
+        return CloudDevice(
+            id=device_data["id"],
+            serial_number=device_data["sn"],
+            name=device_data["name"],
+        )
 
     async def power_on_off(self, serial_number: str, is_off: bool) -> bool:
-        cloud_device = next((d for d in self.cloud_devices if d.serial_number == serial_number), None)
+        cloud_device = next(
+            (d for d in self.cloud_devices if d.serial_number == serial_number), None
+        )
         if not cloud_device:
             return False
 
-        response_data = await self._send_request('PUT', f'/device/{cloud_device.id}/basic-parameters/',
-                                                 base_url=API_V2_BASE_URL, json={"power_off": is_off})
-        return response_data and response_data.get("result", {}).get("power_off", None) == is_off
+        response_data = await self._send_request(
+            "PUT",
+            f"/device/{cloud_device.id}/basic-parameters/",
+            base_url=API_V2_BASE_URL,
+            json={"power_off": is_off},
+        )
+        return (
+            response_data
+            and response_data.get("result", {}).get("power_off", None) == is_off
+        )
 
-    async def _send_request(self, method: str, endpoint: str, base_url=API_BASE_URL, **kwargs) -> Optional[dict]:
+    async def _send_request(
+        self, method: str, endpoint: str, base_url=API_BASE_URL, **kwargs
+    ) -> Optional[dict]:
         url = f"{base_url}{endpoint}"
         async with httpx.AsyncClient() as client:
             headers = self.HEADERS_BASE.copy()

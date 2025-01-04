@@ -2,10 +2,9 @@ import asyncio
 import json
 import socket
 import threading
+from typing import Callable, List, Optional
 
 import httpx
-from typing import List, Optional, Callable
-
 from terneo_net.models import TerneoDevice, TerneoTelemetry
 
 API_URI = "http://{}/api.cgi"
@@ -13,7 +12,6 @@ UDP_PORT = 23500
 
 
 class LocalService:
-
     def __init__(self):
         self._online_devices: List[TerneoDevice] = []
         self._semaphore = asyncio.Semaphore(1)
@@ -28,7 +26,9 @@ class LocalService:
         self._stop_discovery()
 
     async def get_telemetry(self, serial_number: str) -> Optional[TerneoTelemetry]:
-        device = next((d for d in self._online_devices if d.serial_number == serial_number), None)
+        device = next(
+            (d for d in self._online_devices if d.serial_number == serial_number), None
+        )
         if not device:
             return None
 
@@ -41,15 +41,17 @@ class LocalService:
             return telemetry
 
     async def set_temperature(self, serial_number: str, temperature: int) -> bool:
-        device = next((d for d in self._online_devices if d.serial_number == serial_number), None)
+        device = next(
+            (d for d in self._online_devices if d.serial_number == serial_number), None
+        )
         if not device:
             return False
 
         async with self._semaphore, httpx.AsyncClient() as client:
-            response = await client.post(API_URI.format(device.ip), json={
-                "sn": device.serial_number,
-                "par": [[5, 1, str(temperature)]]
-            })
+            response = await client.post(
+                API_URI.format(device.ip),
+                json={"sn": device.serial_number, "par": [[5, 1, str(temperature)]]},
+            )
             data = response.json()
             return data.get("success", False)
 
@@ -60,15 +62,20 @@ class LocalService:
         return await self._power_on_off(serial_number, True)
 
     async def _power_on_off(self, serial_number: str, is_off: bool) -> bool:
-        device = next((d for d in self._online_devices if d.serial_number == serial_number), None)
+        device = next(
+            (d for d in self._online_devices if d.serial_number == serial_number), None
+        )
         if not device:
             return False
 
         async with self._semaphore, httpx.AsyncClient() as client:
-            response = await client.post(API_URI.format(device.ip), json={
-                "sn": device.serial_number,
-                "par": [[125, 7, "1" if is_off else "0"]]
-            })
+            response = await client.post(
+                API_URI.format(device.ip),
+                json={
+                    "sn": device.serial_number,
+                    "par": [[125, 7, "1" if is_off else "0"]],
+                },
+            )
             data = response.json()
             return data.get("success", False)
 
@@ -77,7 +84,7 @@ class LocalService:
         self._is_discovering = True
         self._online_devices.clear()
         self._udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._udp_socket.bind(('', UDP_PORT))
+        self._udp_socket.bind(("", UDP_PORT))
         self._discovery_thread = threading.Thread(target=self._udp_listener)
         self._discovery_thread.start()
 
@@ -117,10 +124,7 @@ class LocalService:
             # display = data.get("display")
 
             data = json.loads(json_str)
-            return TerneoDevice(
-                ip=data.get("ip"),
-                serial_number=data.get("sn")
-            )
+            return TerneoDevice(ip=data.get("ip"), serial_number=data.get("sn"))
         except json.JSONDecodeError:
             return None
 
@@ -144,5 +148,5 @@ class LocalService:
             current_temperature=current_temperature,
             target_temperature=target_temperature,
             heating=data.get("f.0") == "1",
-            power_off=data.get("f.16") == "1"
+            power_off=data.get("f.16") == "1",
         )
